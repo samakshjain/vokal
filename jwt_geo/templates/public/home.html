@@ -1,0 +1,180 @@
+
+{% extends "layout.html" %}
+{% block content %}
+<!-- Main jumbotron for a primary marketing message or call to action -->
+<div class="jumbotron">
+  {% if current_user %}
+  <form id="addressForm">
+    <div class="form-group">
+        Start typing a location:
+        <div id="locationField">
+          <div class="form-group">
+            <input id="autocomplete" placeholder="Enter your address"
+                   onFocus="geolocate()" type="text" class="form-control" name="name"></input>
+          </div>
+        </div>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input name="street" type="hidden"></input>
+        <input name="state" type="hidden"></input>
+        <input name="country" type="hidden"></input>
+        <input name="pin" type="hidden"></input>
+        <input name="latlng" type="hidden"></input>
+    </div>
+  </form>
+  <a class="navbar-link pull-right" href="{{ url_for('user.members') }}">See Locations</a>
+  {% else %}
+  Login/Register to add places.
+  {% endif %}
+</div><!-- /.jumbotron -->
+
+<div class="body-content">
+  <div class="row">
+    <div class="col-lg-6">
+      <h2>Auth</h2>
+      <p>Sessionless authentication via JWT tokens using Flask JWT Extended</p>
+      <p><a class="btn btn-default" href="https://github.com/vimalloc/flask-jwt-extended">Github repo &raquo;</a></p>
+    </div>
+    <div class="col-lg-6">
+      <h2>Geolocation search using Google Places Autocomplete API</h2>
+      <p>SQLAlchemy is the Python SQL toolkit and Object Relational Mapper that gives application developers the full power and flexibility of SQL.</p>
+      <p><a href="http://www.sqlalchemy.org/" class="btn btn-default">Official website &raquo;</a></p>
+   </div>
+  </div><!-- /.row -->
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+    // This example displays an address form, using the autocomplete feature
+    // of the Google Places API to help users fill in the information.
+
+    // This example requires the Places library. Include the libraries=places
+    // parameter when you first load the API. For example:
+    // <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places">
+
+    var placeSearch, autocomplete;
+    var componentForm = {
+      street_number: 'short_name',
+      route: 'long_name',
+      locality: 'long_name',
+      administrative_area_level_1: 'long_name',
+      country: 'long_name',
+      postal_code: 'short_name',
+    };
+
+    var locationFields = {
+      street_number: 'street',
+      administrative_area_level_1: "state",
+      country: "country",
+      postal_code: "pin"
+    }
+
+    function initAutocomplete() {
+      // Create the autocomplete object, restricting the search to geographical
+      // location types.
+      autocomplete = new google.maps.places.Autocomplete(
+          /** @type {!HTMLInputElement} */(document.getElementById('autocomplete')),
+          {types: ['geocode']});
+
+      // When the user selects an address from the dropdown, populate the address
+      // fields in the form.
+      autocomplete.addListener('place_changed', fillInAddress);
+    }
+
+    function fillInAddress() {
+      // Get the place details from the autocomplete object.
+      var place = autocomplete.getPlace();
+      var latlng = place.geometry.location.lat() + ', ' + place.geometry.location.lng();
+      $("input[name='latlng']").val(latlng);
+
+      // Get each component of the address from the place details
+      // and fill the corresponding field on the form.
+      for (var i = 0; i < place.address_components.length; i++) {
+        var addressType = place.address_components[i].types[0];
+        if (componentForm[addressType]) {
+          var val = place.address_components[i][componentForm[addressType]];
+          if (addressType === "route" || addressType === "locality") {
+            $("input[name='street']").val( $("input[name='street']").val() + val);
+          } else {
+            $("input[name='"+ locationFields[addressType] +"']").val(val);
+          }
+        }
+      }
+      $('#addressForm').submit();
+    }
+
+    // Bias the autocomplete object to the user's geographical location,
+    // as supplied by the browser's 'navigator.geolocation' object.
+    function geolocate() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+          var geolocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          var circle = new google.maps.Circle({
+            center: geolocation,
+            radius: position.coords.accuracy
+          });
+          autocomplete.setBounds(circle.getBounds());
+        });
+      }
+    }
+
+    $(document).ready(function() {
+      $('#loginForm').submit(function(e){
+        var form = $(this);
+        $.ajax({
+         type: "POST",
+         url: "{{ url_for('public.login') }}",
+         data: form.serialize(), // serializes the form's elements.
+         success: function(data)
+         {
+            form.notify(
+              "Success!",
+              "success",
+              { position:"left" }
+            );
+            location.reload();
+         },
+         error: function()
+         {
+            form.notify(
+              "Bad username/password",
+              { position:"left" }
+            );
+         }
+        });
+        e.preventDefault();
+      });
+
+      $('#addressForm').submit(function(e){
+        var form = $(this);
+        $.ajax({
+         type: "POST",
+         url: "{{ url_for('user.locations') }}",
+         data: form.serialize(), // serializes the form's elements.
+         success: function(data)
+         {
+            form.notify(
+              "Success!",
+              "success",
+              { position:"left" }
+            );
+         },
+         error: function()
+         {
+            form.notify(
+              "Error",
+              { position:"left" }
+            );
+         }
+        });
+        e.preventDefault();
+      })
+    });
+
+  </script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBPFsM6Vh-6OT37afVg4EOoPOl7XB5zpjE&libraries=places&callback=initAutocomplete"
+      async defer></script>
+{% endblock js %}

@@ -1,0 +1,30 @@
+
+{% extends "layout.html" %}
+{% block content %}
+    <h1>Welcome {{ current_user }}</h1>
+    <h3>Here you can see your past searches.</h3>
+    <ul id="locations">
+    </ul>
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript">
+    $(document).ready(function(){
+        $.get( "{{ url_for('user.locations') }}", function(data) {
+        $.each(data.locations, function(i, v) {
+            $( "#locations" ).append(
+              "<li>Name: " + v.name +
+              "</br>Street:"+ v.street +
+              "</br>State:"+ v.state +
+              "</br>Country:"+ v.country +
+              "</br>Pin:"+ v.pin +
+              "</br>LatLng:"+ v.latlng +
+              "</li>"+
+              "</br>"
+            );
+          })
+        });
+    });
+    </script>
+{% endblock js %}
+
